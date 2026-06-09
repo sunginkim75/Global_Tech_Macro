@@ -66,8 +66,8 @@ def main():
     print("Formatting market report...")
     market_report_text = format_market_data(market_data)
     
-    print("Summarizing news with Gemini (Hybrid Mode, KO/US Split)...")
-    news_summary_text = summarize_news_with_gemini(news_list, us_news_list, gemini_api_key)
+    print("Summarizing news with Gemini (US news only with Market Data)...")
+    news_summary_text = summarize_news_with_gemini(news_list, us_news_list, gemini_api_key, market_data)
     
     # 5. 메시지 조합
     report_date = os.environ.get("RUN_DATE") or os.environ.get("CURRENT_DATE")

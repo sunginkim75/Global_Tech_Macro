@@ -76,6 +76,7 @@ def format_market_data(market_data):
     모바일 폭에 최적화하여 35자 내외의 좁은 가로 폭 테이블을 빌드합니다.
     이모지 렌더링 너비 차이로 인한 정렬 흐트러짐을 방지하기 위해 이모지를 패딩 영역에서 제외합니다.
     다중행 고정폭 정렬을 보장하고 복사 상자 발생 및 폰트 렌더링 왜곡을 방지하기 위해 단일 <code> 태그로 감쌉니다.
+    v0.5.1: 등락 표시 이모지를 한국 투자자 정서(상승: 🔺, 하락: 🔵)로 변경합니다.
     """
     lines = []
     lines.append("📊 <b>[미국 증시 및 주요 종목 현황]</b>")
@@ -89,7 +90,6 @@ def format_market_data(market_data):
     
     indices = market_data.get("indices", {})
     for name, info in indices.items():
-        # 지수 한글 약칭 매핑 적용
         display_name = INDEX_NAME_MAP.get(name, name)
         
         if "error" in info:
@@ -98,11 +98,10 @@ def format_market_data(market_data):
             
         close = info["close"]
         pct_change = info["pct_change"]
-        emoji = "🔺" if pct_change > 0 else "🔻" if pct_change < 0 else "➖"
+        emoji = "🔺" if pct_change > 0 else "🔵" if pct_change < 0 else "➖"
         sign = "+" if pct_change > 0 else ""
         
         close_str = f"{close:,.2f}"
-        # 순수 수치만 7자로 정렬하고 이모지는 고정폭 영역 바깥에 붙임
         change_val_str = f"{sign}{pct_change:.2f}%"
         change_display = f"{pad_string(change_val_str, 7, 'right')} {emoji}"
         
@@ -125,7 +124,7 @@ def format_market_data(market_data):
         close = info["close"]
         pct_change = info["pct_change"]
         
-        emoji = "🔺" if pct_change > 0 else "🔻" if pct_change < 0 else "➖"
+        emoji = "🔺" if pct_change > 0 else "🔵" if pct_change < 0 else "➖"
         sign = "+" if pct_change > 0 else ""
         
         close_str = f"{close:,.2f}"
@@ -148,7 +147,6 @@ def format_news_list(ko_news_list, us_news_list):
 
     lines = []
     
-    # 미국 뉴스 섹션 (번역 필요 표시)
     lines.append("🇺🇸 <b>[미국 현지 금융 외신 동향]</b>")
     lines.append("<code>──────────────────────────────</code>")
     for item in us_news_list[:10]:
@@ -160,11 +158,11 @@ def format_news_list(ko_news_list, us_news_list):
             
     return "\n".join(lines).strip()
 
-def summarize_news_with_gemini(ko_news_list, us_news_list, api_key=None):
+def summarize_news_with_gemini(ko_news_list, us_news_list, api_key=None, market_data=None):
     """
     Gemini API를 사용하여 뉴스 기사들을 한국어로 요약 및 번역합니다.
     v0.5.0에서는 국내 뉴스를 완전히 제외하고 미국 현지 금융 외신만 번역/요약합니다.
-    API 키가 없거나 에러 발생 시 단순 뉴스 리스트(format_news_list)로 무중단 폴백합니다.
+    v0.5.1: 실제 시장 등락률(market_data)을 인지하여 시장 상태와 모순되지 않는 균형 잡힌 요약 리포트를 구성합니다.
     """
     if not us_news_list:
         return "수집된 외신 뉴스가 없습니다."
@@ -175,7 +173,6 @@ def summarize_news_with_gemini(ko_news_list, us_news_list, api_key=None):
         
     try:
         genai.configure(api_key=api_key)
-        # 사용 가능한 최신 gemini-2.5-flash 모델 사용
         model = genai.GenerativeModel("gemini-2.5-flash")
         
         # 미국 영어 뉴스 입력 텍스트 구성 (최대 15개 후보군)
@@ -185,6 +182,18 @@ def summarize_news_with_gemini(ko_news_list, us_news_list, api_key=None):
             us_news_input.append(f"기사 {idx}\n출처: {item['source']}\n시간: {rel_time}\n제목: {item['title']}\n링크: {item['link']}")
             
         us_news_section = "\n\n".join(us_news_input)
+        
+        # 실제 시장 등락률 파악하여 텍스트 주입
+        market_status_text = "N/A"
+        if market_data:
+            status_parts = []
+            for name, info in market_data.get("indices", {}).items():
+                if "error" not in info:
+                    status_parts.append(f"{name}({info.get('pct_change', 0):+.2f}%)")
+            for name, info in market_data.get("stocks", {}).items():
+                if "error" not in info:
+                    status_parts.append(f"{info.get('ticker', name)}({info.get('pct_change', 0):+.2f}%)")
+            market_status_text = ", ".join(status_parts)
         
         prompt = (
             "너는 전문 금융 투자 분석가다. 아래 제공된 미국 현지 금융 외신의 뉴스 목록을 분석해서 "
@@ -220,10 +229,14 @@ def summarize_news_with_gemini(ko_news_list, us_news_list, api_key=None):
             "  - 기사 제목(헤드라인) 전체에 텔레그램 HTML 하이퍼링크 서식인 `<a href=\"링크\">제목</a>`을 적용해라. 이때 태그 닫기와 따옴표 처리에 각별히 주의하여 HTML 파싱 오류가 나지 않도록 해라. 출처를 제외한 순수 번역된 제목 전체가 굵은꼴(<b>) 안에 HTML 하이퍼링크로 완벽히 래핑되어야 한다. 예: `<b><a href=\"https://finance.yahoo.com/news/1\">미국 연준 금리 인상 속도 조절 시사</a></b>`\n"
             "  - 기사 바로가기 화살표 행이나 기사 링크만 나열하는 행은 절대로 포함하지 마라. 제목 자체에 링크를 거는 것만으로 충분하다.\n"
             "  - 마크다운 서식(*, _, `, [text](url)) 대신 텔레그램에서 파싱 가능한 HTML 태그(<b>, <i>, <code>, <a>)만 사용해라. 특히 HTML 엔티티나 괄호가 누락되지 않도록 검증해라.\n"
-            "  - 요약 행의 앞에는 공백 2칸(들여쓰기)을 주고, 시작 기호로 특수문자 bullet(`  • `)을 사용해야 한다.\n"
+            "  - 요약 행의 앞에는 공백 2개(들여쓰기)을 주고, 시작 기호로 특수문자 bullet(`  • `)을 사용해야 한다.\n"
             "  - 기사들 사이에는 구분선 `<code>──────────────────────────────</code>`을 정확히 삽입해라.\n\n"
             "4. 영어 뉴스는 어색한 직역을 배제하고, 우리나라 개인 투자자들이 직관적으로 이해할 수 있는 자연스러운 한국어 금융 용어로 번역 및 요약할 것.\n"
-            "5. 불필요한 서론이나 결론(예: '요약본입니다' 등)은 완전히 생략하고 분류된 결과만 반환할 것.\n\n"
+            "5. 불필요한 서론이나 결론(예: '요약본입니다' 등)은 완전히 생략하고 분류된 결과만 반환할 것.\n"
+            "6. **중요: 실제 증시 등락 상태와 요약 내용의 정합성 유지 (필수)**:\n"
+            f"   - 오늘 실제 미국 시장 지수 및 주요 종목의 등락률 현황은 다음과 같다: [{market_status_text}]\n"
+            "   - 실제 지수와 종목들이 대부분 크게 하락(음수 등락률)하고 있다면, 수집된 뉴스 목록에 과거의 일방적인 상승 호재성 뉴스(예: 애플 랠리 소식 등)만 들어있다 하더라도 단순히 상승 분위기만 나열하여 실제 증시 상황(폭락세)과 모순되는 뚱딴지같은 시장 요인 리포트를 생성하지 마라.\n"
+            "   - 증시가 하락세일 때에는 제공된 뉴스 기사들 속에서 하락/조정의 배경(예: 연준 금리 인하 신중론, 기술주 고점 차익 실현 매물 출회, 지정학적 긴장, 국채 금리 상승 등)이 되는 원인과 실마리를 최우선적으로 도출하여 '💡 오늘의 미국 시장 주요 요인'에 반영하고, '🇺🇸 미국 현지 시황 & 외신 요약' 섹션에서도 증시 조정을 설명하는 뉴스를 앞단에 우선적으로 선별하여 한국어 요약본을 출력할 것.\n\n"
             f"--- [미국 현지 외신 뉴스 목록] ---\n{us_news_section}"
         )
         
