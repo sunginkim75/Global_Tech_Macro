@@ -98,7 +98,7 @@ def format_market_data(market_data):
             
         close = info["close"]
         pct_change = info["pct_change"]
-        emoji = "🔺" if pct_change > 0 else "🔵" if pct_change < 0 else "➖"
+        emoji = "🔴" if pct_change > 0 else "🔵" if pct_change < 0 else "➖"
         sign = "+" if pct_change > 0 else ""
         
         close_str = f"{close:,.2f}"
@@ -124,7 +124,7 @@ def format_market_data(market_data):
         close = info["close"]
         pct_change = info["pct_change"]
         
-        emoji = "🔺" if pct_change > 0 else "🔵" if pct_change < 0 else "➖"
+        emoji = "🔴" if pct_change > 0 else "🔵" if pct_change < 0 else "➖"
         sign = "+" if pct_change > 0 else ""
         
         close_str = f"{close:,.2f}"
