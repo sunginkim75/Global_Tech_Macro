@@ -13,5 +13,5 @@
   - [x] `Debug/019.debug_test.py` 스크립트 작성 및 [x] 텔레그램 실발송 검증
 - [x] 문서 갱신
   - [x] `DOCS/walkthrough.md`에 v0.6.1 개편 히스토리 반영
-- [ ] Git commit 및 push (유저 컨폼 후 실행)
+- [x] Git commit 및 push (유저 컨폼 후 실행)
 
