@@ -62,6 +62,24 @@ def main():
     print("Collecting US finance news (English)...")
     us_news_list = get_us_focused_news(us_news_keywords, us_target_domains, us_exclude_keywords, limit=15)
     
+    # [신규 고도화] ±5.0% 이상 변동이 큰 주요 기술주 감지 시 핀포인트 뉴스 추가 수집
+    impactful_tickers = []
+    for name, info in market_data.get("stocks", {}).items():
+        if "error" not in info:
+            pct = info.get("pct_change", 0)
+            if abs(pct) >= 5.0:
+                ticker = info.get("ticker", name)
+                impactful_tickers.append((name, ticker))
+                
+    if impactful_tickers:
+        print(f"Detecting impactful price movements: {impactful_tickers}")
+        for name, ticker in impactful_tickers:
+            pinpoint_keywords = [f"{name} stock", f"{ticker} earnings", f"{name} earnings"]
+            print(f"Pinpoint collecting news for {name} ({ticker})...")
+            pinpoint_news = get_us_focused_news(pinpoint_keywords, us_target_domains, us_exclude_keywords, limit=2)
+            if pinpoint_news:
+                us_news_list = pinpoint_news + us_news_list
+                
     # 4. 리포트 가공 및 포맷팅 (요약 복구)
     print("Formatting market report...")
     market_report_text = format_market_data(market_data)

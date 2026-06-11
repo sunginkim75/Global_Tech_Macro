@@ -62,12 +62,19 @@ def pad_string(text, target_width, align='left'):
 INDEX_NAME_MAP = {
     "S&P 500": "S&P500",
     "Nasdaq": "NASDAQ",
+    "TQQQ": "TQQQ",
+    "SOXL": "SOXL",
     "Dow Jones": "DOW",
     "PHLX Semiconductor": "SOX",
     "VIX": "VIX",
     "미국 10년물 국채": "US10Y",
     "미국 30년물 국채": "US30Y",
     "미국 달러지수": "DXY"
+}
+
+STOCK_NAME_MAP = {
+    "CL=F": "WTI",
+    "BTC-USD": "BTC"
 }
 
 def format_market_data(market_data):
@@ -121,6 +128,7 @@ def format_market_data(market_data):
             continue
             
         ticker = info.get("ticker", name)
+        display_ticker = STOCK_NAME_MAP.get(ticker, ticker)
         close = info["close"]
         pct_change = info["pct_change"]
         
@@ -131,7 +139,7 @@ def format_market_data(market_data):
         change_val_str = f"{sign}{pct_change:.2f}%"
         change_display = f"{pad_string(change_val_str, 7, 'right')} {emoji}"
         
-        stock_lines.append(f"{pad_string(ticker, 10)} | {pad_string(close_str, 10, 'right')} | {change_display}")
+        stock_lines.append(f"{pad_string(display_ticker, 10)} | {pad_string(close_str, 10, 'right')} | {change_display}")
         
     lines.append(f"<code>" + "\n".join(stock_lines) + "</code>")
     return "\n".join(lines)
@@ -220,9 +228,10 @@ def summarize_news_with_gemini(ko_news_list, us_news_list, api_key=None, market_
             "  (선택) <code>#연관종목명</code> (연관된 주식 종목 또는 섹터 태그가 명확히 있을 때만 배지로 삽입)\n"
             "  <code>──────────────────────────────</code>\n\n"
             "  *주의 및 세부 지침*:\n"
-            "  - **핵심 뉴스 자동 선별 지침 (필수)**:\n"
-            "    - 고정된 개수 제한을 두지 말고, 제공된 뉴스 기사들 중 **인공지능(AI) 기술 및 업계 동향, 반도체(Semiconductor) 업황 및 공급망 이슈, 하이퍼스케일러(MSFT, GOOGL, AMZN, META 등)의 클라우드 및 AI 인프라 투자(설비투자/CAPEX) 계획, 주요 기업의 분기 실적 발표(Earnings), 그리고 미국 국채 금리나 주요 주가 지수(나스닥, S&P500 등)의 등락에 직접 영향을 준 거시경제(매크로) 이벤트**를 다룬 핵심 기사들을 최우선적으로 엄선하여 요약 카드뉴스로 출력해라.\n"
-            "    - 단순히 개별 기업의 사소한 임원 인사, 사소한 단신, 혹은 이미 다른 기사에서 충분히 다뤄진 중복 이벤트성 기사는 요약 대상에서 과감히 제외하여 핵심 매크로 및 테크 정보 위주로 슬림화해야 한다.\n"
+            "  - **핵심 뉴스 자동 선별 지침 (필수 및 절대 준수)**:\n"
+            "    - 고정된 개수 제한을 두지 말고, 제공된 뉴스 기사들 중 **인플레이션 지표(CPI, PCE), 연방준비제도(Fed)의 금리 방향성 및 FOMC 회의 결과, 미국 국채 금리 변동, 주요 지수(나스닥, S&P 500 등)의 전체적인 장세 동향과 같은 거시경제(매크로) 시황**을 최우선(1순위)으로 선별해라.\n"
+            "    - 2순위로 **반도체 업황 전반의 변화 및 공급망 동향, 하이퍼스케일러들의 AI 인프라 투자(CAPEX) 흐름, 주요 기업들의 분기 실적(Earnings) 발표, 혹은 대형 IPO(예: SpaceX 등)로 인한 증시 내 자금 이동 및 로테이션 우려**를 선별해라.\n"
+            "    - **[중요] 지엽적인 기업 단신 배제 규칙**: 개별 기업의 단순 신제품 발표, 소프트웨어/OS 업데이트(예: Apple Siri 기능 개선, Apple Intelligence 일반 기능 소개 등), 지엽적인 제품 리뷰, 루머나 유출 소식 등은 아무리 유명한 기업의 기사라도 **미국 증시 전반의 향방에 직접적인 지수 변동이나 큰 매크로 흐름을 초래하지 않는 한 요약 대상에서 완전히 제외**해라. 미국 증시 전체 흐름을 확실히 대변할 수 있는 매크로 시황과 무게감 있는 핵심 소식으로만 엄격히 필터링 및 슬림화해야 한다.\n"
             "  - [출처]와 [시간] 부분은 뉴스 입력의 '출처' 필드와 '시간' 필드 값을 그대로 활용해라. "
             "예를 들어, 출처가 'Yahoo Finance'이고 시간이 '10분 전'이면 `<code>번역 · Yahoo Finance · 10분 전</code>` 처럼 '번역 · ' 접두사를 무조건 붙여서 생성해라. (외신 기사는 모두 한글 번역 요약이므로 `<code>번역 · [출처] · [시간]</code>` 형식이어야 한다.)\n"
             "  - 외신 기사의 제목은 한국인 투자자가 이해하기 쉽도록 반드시 한글 헤드라인으로 자연스럽게 번역해서 출력해라.\n"

@@ -1,5 +1,37 @@
 # 통합 작업 히스토리 (Walkthrough)
 
+## 📅 2026-06-11
+### 미국 증시 매크로 뉴스 선별 밸런스 최적화(급등락 기술주 핀포인트 수집 자동화), TQQQ/SOXL 지수화, 신규 5개 종목(Oracle, Palantir, SanDisk, AMAT, LRCX) 추가 및 시총순 정렬 완료 (v0.6.1)
+
+미국 현지 금융 뉴스 중 시장 가치가 없거나 지엽적인 단순 기기 리뷰/소프트웨어 업데이트 단신(unboxing, hands-on, case leak 등)은 완벽히 제거하되, **오라클의 실적 폭락, 인텔의 업그레이드 급등, 애플/엔비디아의 핵심 발표 등 미국 증시 판도와 주가 수급에 지대한 영향을 주는 굵직한 주요 기업 핵심 비즈니스 뉴스는 요약에서 누락되지 않도록 수집 파이프라인과 AI 선별 규칙의 밸런스를 고도화**했습니다. 이를 위해 ±5.0% 이상 변동이 큰 주요 기술주가 감지될 경우 관련 뉴스를 핀포인트로 즉각 추가 수집하는 로직을 도입했습니다. 또한 사용자의 요구에 맞춰 레버리지 지수 ETF인 `TQQQ`/`SOXL`을 주요 시장 지수(`indices`) 테이블의 S&P 500, NASDAQ 직후로 이동 배치하고, WTI/BTC 출력 명칭 정제(WTI, BTC) 및 주요 빅테크 21개 종목의 시총순 정렬을 완료했습니다.
+
+#### 1. 구현된 주요 변경 사항
+- **급등락 주요 종목 핀포인트 뉴스 수집 자동화**:
+  - [src/main.py](file:///c:/Users/SunginKIm/PYthon_WorkSpace/Global_Tech_Macro/src/main.py): 주가 데이터를 수집한 뒤, 절대값 5.0% 이상 급등락한 주요 기술주가 감지될 경우 해당 종목의 실적/시황 뉴스(예: `Oracle stock`, `Oracle earnings`)를 구글 뉴스 RSS에서 핀포인트로 추가 수집하여 뉴스 목록 최상단에 강제 병합시키는 로직을 신설했습니다.
+- **수집 단계 필터 밸런스 정밀 조정**:
+  - [config/config.json](file:///c:/Users/SunginKIm/PYthon_WorkSpace/Global_Tech_Macro/config/config.json): `us_exclude_keywords`에서 `update`, `launch`, `unveil`, `features` 등 굵직한 기업 발표에 빈번히 쓰이는 핵심 단어를 제외시켰습니다. 대신에 정보 가치가 낮은 `hands-on`, `review`, `unboxing`, `giveaway`, `spec leak`, `case leak` 등 순수 단신/리뷰성 단어들만 남겨두어 핵심 비즈니스 뉴스의 차단을 방지했습니다.
+  - `us_news_keywords`에 `Oracle stock`, `Tesla stock`, `tech earnings report`, `stock plunge` 등의 키워드를 보강해 수집 쿼리를 고도화했습니다.
+- **TQQQ 및 SOXL 지수 테이블 재배치**:
+  - [config/config.json](file:///c:/Users/SunginKIm/PYthon_WorkSpace/Global_Tech_Macro/config/config.json): `stocks` 목록에 있던 `TQQQ`와 `SOXL`을 `indices`로 이동시키고, `S&P 500`과 `Nasdaq` 바로 다음에 오도록 순서를 조정했습니다.
+  - [src/summarizer.py](file:///c:/Users/SunginKIm/PYthon_WorkSpace/Global_Tech_Macro/src/summarizer.py): `INDEX_NAME_MAP` 사전에 TQQQ와 SOXL을 정식 추가하여 지수 테이블 렌더링에 반영했습니다.
+- **주요 빅테크 및 반도체 21개사 추가 및 시총순 정렬**:
+  - [config/config.json](file:///c:/Users/SunginKIm/PYthon_WorkSpace/Global_Tech_Macro/config/config.json): `Oracle`(`ORCL`), `Palantir`(`PLTR`), `SanDisk`(`SNDK`), `AMAT`(`AMAT`), `LRCX`(`LRCX`) 5개 종목을 추가하고, **모든 종목을 글로벌 시가총액 내림차순(MSFT, AAPL, NVDA, GOOGL, AMZN, META, TSM, TSLA, AVGO, ASML ... PLTR, SNDK)으로 정밀하게 정렬**했습니다.
+- **WTI 및 BTC 출력 명칭 정제**:
+  - [src/summarizer.py](file:///c:/Users/SunginKIm/PYthon_WorkSpace/Global_Tech_Macro/src/summarizer.py): `STOCK_NAME_MAP` 사전을 신설하여 `CL=F` -> `WTI`, `BTC-USD` -> `BTC`로 치환 출력하여 가로 정렬 너비를 슬림하게 최적화했습니다.
+- **AI 요약 뉴스 밸런스 고도화**:
+  - [src/summarizer.py](file:///c:/Users/SunginKIm/PYthon_WorkSpace/Global_Tech_Macro/src/summarizer.py): Gemini API 프롬프트의 지침을 보강하여, 사소한 단신(unboxing 등)은 필터링하되 기업의 실적이나 주가, 시장 수급에 큰 파급력을 주는 대규모 비즈니스 발표(M&A, 대형 IPO, CAPEX 설비투자, 어닝 쇼크/서프라이즈 등)는 거시 시황 분석과 함께 균형 있게 선별 요약하도록 가이드라인을 최적화했습니다.
+- **버전 및 문서 동기화**:
+  - [config/version.json](file:///c:/Users/SunginKIm/PYthon_WorkSpace/Global_Tech_Macro/config/version.json): 버전을 `0.6.1`로 상향하고 히스토리를 갱신했습니다.
+  - [Debug/019.debug_test.py](file:///c:/Users/SunginKIm/PYthon_WorkSpace/Global_Tech_Macro/Debug/019.debug_test.py): 실시간 주가 변동 연동 및 동적 핀포인트 뉴스 병합 검증을 추가하여 최종 텔레그램 실발송을 검증했습니다.
+
+#### 2. 검증 결과
+- **디버그 테스트 실발송 검증 (`Debug/019.debug_test.py`)** -> **성공**
+  - **급등락 기술주 핀포인트 수집 검증**: 오라클 주가 급락(-11.83%) 및 인텔 급등(+5.49%) 등 마켓 임팩트가 큰 주가 변동을 코드가 자동 감지하여 `Oracle stock`, `Oracle earnings` 관련 뉴스를 핀포인트로 정확히 수집 및 병합해 오는 것을 콘솔 출력을 통해 실증했습니다.
+  - **뉴스 밸런스 검증**: AI가 오라클의 인프라 CapEx 지출 급증 우려 및 채권 발행 우려로 인한 급락 요인을 정확하게 포착하고, 인텔의 BofA 더블 상향 조정 호재 소식과 매크로 지표(CPI, 국채금리)를 아주 조화롭고 완성도 높게 요약 카드 및 💡 주요 요인으로 텔레그램에 전송했습니다.
+  - **시총순 정렬 및 티커 치환 검증**: 주가 목록 테이블에 추가된 AMAT, LRCX, SNDK, ORCL, PLTR을 포함한 21개 종목이 시총 내림차순으로 완벽히 정렬되었으며, `WTI`, `BTC` 명칭 치환에 의해 세로 컬럼 정렬이 소수점 한 자리 오차도 없이 수직 칼정렬(🔴/🔵) 렌더링되었습니다.
+
+---
+
 ## 📅 2026-06-10
 ### AI·반도체·하이퍼스케일러·실적 발표 수집 강화 및 🔴/🔵 등락 이모지 단독 개편 완료 (v0.6.0)
 

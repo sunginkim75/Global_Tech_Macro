@@ -2,7 +2,7 @@ name: Daily Report
 
 on:
   schedule:
-    - cron: '30 21 * * *' # 한국시간 06:30에 실행 (UTC 21:30 - 전날)
+    - cron: '00 21 * * *' # 한국시간 06:00에 실행 (UTC 21:00 - 전날)
   workflow_dispatch:
 
 jobs:
